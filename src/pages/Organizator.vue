@@ -139,9 +139,15 @@ const onRead = async () => {
 
 const onDeleteRow = async () => {
   if (!selectedOrganizator.value.length) return
+
+  // Potvrda za brisanje
+  const isConfirmed = window.confirm('Želite li obrisati organizatora?')
+  if (!isConfirmed) return // Ako korisnik otkaže, prestani s brisanjem
+
   try {
     await api.delete(`/organizator/${selectedOrganizator.value[0].sifra_organizatora}`)
     onRead() // Osvježi popis organizatora
+    alert('Organizator je uspješno obrisan!')
   } catch (error) {
     console.error('Greška pri brisanju:', error)
   }
@@ -184,6 +190,10 @@ const onSave = async () => {
     } else {
       await api.post('/organizator', editOrganizator.value)
     }
+
+    // Alert nakon uspješnog spremanja organizatora
+    alert('Podaci su uspješno spremljeni!')
+
     onRead()
     showForm.value = false
   } catch (error) {

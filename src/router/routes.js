@@ -32,6 +32,11 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
     children: [{ path: '', component: () => import('pages/DogadanjaNovoPage.vue') }],
   },
+  {
+    path: '/postavke',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [{ path: '', component: () => import('pages/SettingsPage.vue') }],
+  },
 ]
 
 export default routes

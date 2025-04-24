@@ -39,7 +39,14 @@
       <q-card flat bordered class="q-pa-sm">
         <q-card-section>
           <q-form @submit.prevent="onSave" ref="izvođačForm">
-            <!-- Polje za šifru je uklonjeno, jer se generira automatski -->
+            <q-input
+              filled
+              v-model="editIzvodac.sifra_izvodaca"
+              label="Šifra izvođača"
+              lazy-rules
+              :disable="isEditing"
+              :rules="[(val) => (val && val.length === 8) || 'Šifra mora imati točno 8 znakova']"
+            />
             <q-input
               filled
               v-model="editIzvodac.ime_izvodaca"
@@ -89,6 +96,12 @@ defineOptions({
 })
 
 const columns = [
+  {
+    name: 'sifra_izvodaca',
+    label: 'Šifra izvođača',
+    field: 'sifra_izvodaca',
+    sortable: true,
+  },
   {
     name: 'ime_izvodaca',
     label: 'Ime izvođača',
@@ -140,6 +153,11 @@ const onRead = async () => {
 
 const onDeleteRow = async () => {
   if (!selectedIzvodac.value.length) return
+
+  // Potvrda za brisanje
+  const isConfirmed = window.confirm('Želite li obrisati ovog izvođača?')
+  if (!isConfirmed) return // Ako korisnik otkaže, prestani s brisanjem
+
   try {
     await api.delete(`/izvodac/${selectedIzvodac.value[0].sifra_izvodaca}`)
     onRead() // Osvježi popis izvođača
@@ -151,7 +169,7 @@ const onDeleteRow = async () => {
 const onAddRow = () => {
   selectedIzvodac.value = []
   editIzvodac.value = {
-    sifra_izvodaca: '', // Ovdje ne unosimo šifru, bit će automatski generirana.
+    sifra_izvodaca: '',
     ime_izvodaca: '',
     prezime_izvodaca: '',
     umjetnickoIme_izvodaca: '',
@@ -179,15 +197,15 @@ const onSelectionRow = (selected) => {
 const onSave = async () => {
   try {
     if (isEditing.value) {
-      // Ako uređujete postojećeg izvođača, pošaljite PUT zahtjev s trenutnim ID-em.
       await api.put(`/izvodac/${editIzvodac.value.sifra_izvodaca}`, editIzvodac.value)
     } else {
-      // Ako dodajete novog izvođača, uklonite "sifra_izvodaca" iz objekta jer je auto-generirana
-      const newIzvodacData = { ...editIzvodac.value }
-      delete newIzvodacData.sifra_izvodaca // Uklanjanje šifre prije slanja
-      await api.post('/izvodac', newIzvodacData)
+      await api.post('/izvodac', editIzvodac.value)
     }
-    onRead()
+
+    // Prikazivanje alert obavijesti nakon uspješno spremljenih podataka
+    alert('Podaci su uspješno spremljeni!')
+
+    onRead() // Osvježi popis izvođača
     showForm.value = false
   } catch (error) {
     console.error('Greška pri spremanju:', error)

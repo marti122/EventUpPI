@@ -3,10 +3,7 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
-
-        <!-- Dodajte @click event za povratak na početnu stranicu -->
-        <q-toolbar-title @click="goToHomePage"> Event up </q-toolbar-title>
-
+        <q-toolbar-title> Event up </q-toolbar-title>
         <div>v{{ version }}</div>
       </q-toolbar>
     </q-header>
@@ -15,7 +12,12 @@
       <q-list>
         <q-item-label header> Glavni izbornik </q-item-label>
 
-        <EssentialLink v-for="route in routesList" :key="route.title" v-bind="route" />
+        <!-- Statičke stranice (O nama, Postavke) -->
+        <EssentialLink v-for="route in staticRoutes" :key="route.title" v-bind="route" />
+
+        <!-- Dinamičke stranice ovisno o odabranoj ulozi -->
+        <q-separator />
+        <EssentialLink v-for="route in dynamicRoutes" :key="route.title" v-bind="route" />
       </q-list>
     </q-drawer>
 
@@ -26,54 +28,70 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter } from 'vue-router' // Import Vue Router
+import { ref, computed } from 'vue'
+import { useSettingsStore } from 'src/stores/settingsStore'
 import EssentialLink from 'components/EssentialLink.vue'
 
 const version = '1.0'
 const leftDrawerOpen = ref(false)
+const settingsStore = useSettingsStore()
 
-// Definirajte rute za izbornik
-const routesList = [
-  {
-    title: 'Izvođači',
-    caption: 'Izvođači',
-    icon: 'music_note',
-    route: '/izvodac',
-  },
-  {
-    title: 'Organizatori',
-    caption: 'Organizatori glazbenih događanja',
-    icon: 'groups',
-    route: '/organizator',
-  },
-  {
-    title: 'Događanja',
-    caption: 'Glazbena događanja',
-    icon: 'event',
-    route: '/nastupi',
-  },
-  {
-    title: 'Kreiraj događanje',
-    caption: 'Unesi novo događanje',
-    icon: 'timer',
-    route: '/nastupiNovo',
-  },
+// Statičke stranice
+const staticRoutes = [
   {
     title: 'O nama',
     caption: 'Više o Event Up',
     icon: 'person',
     route: '/onama',
   },
+  {
+    title: 'Postavke',
+    caption: 'Promjena postavki',
+    icon: 'settings',
+    route: '/postavke',
+  },
 ]
 
-// Aktivirajte Vue Router
-const router = useRouter()
-
-// Funkcija za preusmjeravanje na početnu stranicu
-function goToHomePage() {
-  router.push('/') // Preusmjeri na početnu stranicu (IndexPage)
-}
+// Dinamičke stranice
+const dynamicRoutes = computed(() => {
+  const role = settingsStore.uloga
+  if (!role) {
+    return [] // Ako nije odabrana uloga, ne prikazujemo dinamičke stranice
+  }
+  const routes = [
+    {
+      title: 'Izvođači',
+      caption: 'Izvođači',
+      icon: 'music_note',
+      route: '/izvodac',
+    },
+    {
+      title: 'Organizatori',
+      caption: 'Organizatori glazbenih događanja',
+      icon: 'groups',
+      route: '/organizator',
+    },
+    {
+      title: 'Događanja',
+      caption: 'Glazbena događanja',
+      icon: 'event',
+      route: '/nastupi',
+    },
+  ]
+  if (role === 'Izvođač') {
+    return routes // Ako je uloga Izvođač, prikazuje osnovne stranice
+  }
+  // Ako je Organizator ili Administrator
+  return [
+    ...routes,
+    {
+      title: 'Kreiraj događanje',
+      caption: 'Unesi novo događanje',
+      icon: 'timer',
+      route: '/nastupiNovo',
+    },
+  ]
+})
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
