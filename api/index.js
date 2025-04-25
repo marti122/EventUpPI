@@ -2,9 +2,12 @@ import express from 'express'
 import cors from 'cors'
 import mysql from 'mysql2/promise'
 import config from './config.js'
+import bcrypt from 'bcrypt'
+import jwt from 'jsonwebtoken'
 
 const app = express()
 const port = 3000
+const jwtSecret = 'tajnaLozinka123'
 
 // Funkcija za izvršavanje SQL upita
 async function query(sql, params = []) {
@@ -23,8 +26,67 @@ async function query(sql, params = []) {
 app.use(express.json())
 app.use(cors({ origin: '*' }))
 
-// GET - Dohvati sve organizatore iz baze podataka
-app.get('/api/organizator', async (req, res, next) => {
+// Middleware za zaštitu ruta
+function verifyToken(req, res, next) {
+  const authHeader = req.headers['authorization']
+  const token = authHeader && authHeader.split(' ')[1]
+
+  if (!token) {
+    return res.sendStatus(401)
+  }
+
+  jwt.verify(token, jwtSecret, (err, user) => {
+    if (err) {
+      return res.sendStatus(403)
+    }
+    req.user = user
+    next()
+  })
+}
+
+// 🔵 API LOGIN - bez zaštite (otvoreno)
+app.post('/api/login', async (req, res, next) => {
+  try {
+    const { username, password, role } = req.body
+
+    const result = await query('SELECT * FROM users WHERE username = ?', [username])
+
+    if (result.length === 0) {
+      return res.status(401).json({ success: false, message: 'Neispravno korisničko ime.' })
+    }
+
+    const user = result[0]
+
+    const isPasswordCorrect = await bcrypt.compare(password, user.password)
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ success: false, message: 'Pogrešna lozinka.' })
+    }
+
+    if (user.role !== role) {
+      return res.status(403).json({ success: false, message: 'Neispravna uloga.' })
+    }
+
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role },
+      jwtSecret,
+      { expiresIn: '1h' }
+    )
+
+    res.json({
+      success: true,
+      role: user.role,
+      token,
+    })
+  } catch (err) {
+    console.error('Greška u loginu:', err.message)
+    next(err)
+  }
+})
+
+
+// 🔒 ZAŠTIĆENE RUTE (s verifyToken)
+
+app.get('/api/organizator', verifyToken, async (req, res, next) => {
   try {
     const result = await query('SELECT * FROM organizator')
     res.json(result)
@@ -33,8 +95,7 @@ app.get('/api/organizator', async (req, res, next) => {
   }
 })
 
-// PUT - Ažuriraj podatke o organizatoru
-app.put('/api/organizator/:sifra_organizatora', async (req, res, next) => {
+app.put('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, next) => {
   try {
     const { sifra_organizatora } = req.params
     const { naziv_organizatora, kontakt_organizatora, lokacija_organizatora } = req.body
@@ -51,11 +112,9 @@ app.put('/api/organizator/:sifra_organizatora', async (req, res, next) => {
   }
 })
 
-// POST - Dodaj novog organizatora
-app.post('/api/organizator', async (req, res, next) => {
+app.post('/api/organizator', verifyToken, async (req, res, next) => {
   try {
-    const { sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora } =
-      req.body
+    const { sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora } = req.body
 
     await query(
       'INSERT INTO organizator (sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora) VALUES (?, ?, ?, ?)',
@@ -70,8 +129,7 @@ app.post('/api/organizator', async (req, res, next) => {
   }
 })
 
-// DELETE - Obriši organizatora
-app.delete('/api/organizator/:sifra_organizatora', async (req, res, next) => {
+app.delete('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, next) => {
   try {
     const { sifra_organizatora } = req.params
 
@@ -89,8 +147,8 @@ app.delete('/api/organizator/:sifra_organizatora', async (req, res, next) => {
     next(err)
   }
 })
-// GET - Dohvati sve izvođače iz baze podataka
-app.get('/api/izvodac', async (req, res, next) => {
+
+app.get('/api/izvodac', verifyToken, async (req, res, next) => {
   try {
     const result = await query('SELECT * FROM izvodac')
     res.json(result)
@@ -99,8 +157,7 @@ app.get('/api/izvodac', async (req, res, next) => {
   }
 })
 
-// PUT - Ažuriraj podatke o izvođačima
-app.put('/api/izvodac/:sifra_izvodaca', async (req, res, next) => {
+app.put('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) => {
   try {
     const { sifra_izvodaca } = req.params
     const { ime_izvodaca, prezime_izvodaca, umjetnickoIme_izvodaca, kontakt_izvodaca } = req.body
@@ -117,8 +174,7 @@ app.put('/api/izvodac/:sifra_izvodaca', async (req, res, next) => {
   }
 })
 
-// POST - Dodaj novog izvođača
-app.post('/api/izvodac', async (req, res, next) => {
+app.post('/api/izvodac', verifyToken, async (req, res, next) => {
   try {
     const {
       sifra_izvodaca,
@@ -141,8 +197,7 @@ app.post('/api/izvodac', async (req, res, next) => {
   }
 })
 
-// DELETE - Obriši izvođača
-app.delete('/api/izvodac/:sifra_izvodaca', async (req, res, next) => {
+app.delete('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) => {
   try {
     const { sifra_izvodaca } = req.params
 
@@ -158,8 +213,8 @@ app.delete('/api/izvodac/:sifra_izvodaca', async (req, res, next) => {
     next(err)
   }
 })
-// GET - Dohvati sva događanja (nastupe)
-app.get('/api/nastupi', async (req, res, next) => {
+
+app.get('/api/nastupi', verifyToken, async (req, res, next) => {
   try {
     const result = await query('SELECT datum_nastupa, mjesto_nastupa, sifra_izvodaca FROM nastup')
     res.json(result)
@@ -167,34 +222,14 @@ app.get('/api/nastupi', async (req, res, next) => {
     next(err)
   }
 })
-// GET - Dohvati detalje izvođača prema šifri (potrebno za prikaz nastupa)
-app.get('/api/izvodac/:sifra_izvodaca', async (req, res, next) => {
-  try {
-    const { sifra_izvodaca } = req.params
-    const result = await query(
-      'SELECT ime_izvodaca, prezime_izvodaca, umjetnickoIme_izvodaca, kontakt_izvodaca FROM izvodac WHERE sifra_izvodaca = ?',
-      [sifra_izvodaca],
-    )
 
-    if (result.length > 0) {
-      res.json(result[0])
-    } else {
-      res.status(404).json({ error: 'Izvođač nije pronađen' })
-    }
-  } catch (err) {
-    next(err)
-  }
-})
-
-// POST - Dodaj novi nastup
-app.post('/api/nastupi', async (req, res, next) => {
+app.post('/api/nastupi', verifyToken, async (req, res, next) => {
   try {
     const { datum_nastupa, mjesto_nastupa, sifra_izvodaca } = req.body
 
-    // Provjera postoji li izvođač s ovom šifrom
     const izvodac = await query('SELECT * FROM izvodac WHERE sifra_izvodaca = ?', [sifra_izvodaca])
     if (izvodac.length === 0) {
-      return res.status(400).json({ error: 'Izvođač s ovom šifrom nije pronađen.' })
+      return res.status(400).json({ error: 'Izvođač nije pronađen.' })
     }
 
     await query(
@@ -202,22 +237,13 @@ app.post('/api/nastupi', async (req, res, next) => {
       [datum_nastupa, mjesto_nastupa, sifra_izvodaca],
     )
 
-    res.json({ message: 'Nastup uspješno dodan' })
+    res.json({ message: 'Nastup dodan' })
   } catch (err) {
     console.error('Greška pri spremanju nastupa:', err.message)
     next(err)
   }
 })
 
-// GET - Dohvati sve izvođače (samo ime i prezime) za potrebe unosa novog nastupa
-app.get('/api/izvodac', async (req, res, next) => {
-  try {
-    const result = await query('SELECT sifra_izvodaca, ime_izvodaca, prezime_izvodaca FROM izvodac')
-    res.json(result)
-  } catch (err) {
-    next(err)
-  }
-})
 // Pokreni server
 app.listen(port, () => {
   console.log(`Server pokrenut na http://localhost:${port}`)

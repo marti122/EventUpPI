@@ -8,6 +8,18 @@
   </q-page>
 </template>
 
+
 <script setup>
-//
+import { onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useSettingsStore } from 'src/stores/settingsStore'
+
+const router = useRouter()
+const settingsStore = useSettingsStore()
+
+onMounted(() => {
+  if (!settingsStore.uloga) {
+    router.push('/login')
+  }
+})
 </script>
