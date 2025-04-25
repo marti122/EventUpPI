@@ -3,8 +3,18 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
-        <q-toolbar-title> Event up </q-toolbar-title>
+        <q-toolbar-title>Event Up</q-toolbar-title>
         <div>v{{ version }}</div>
+
+        <!-- 🔵 Logout gumb, prikazuje se samo ako je korisnik prijavljen -->
+        <q-btn
+          v-if="isLoggedIn"
+          flat
+          label="Logout"
+          icon="logout"
+          class="q-ml-md"
+          @click="logout"
+        />
       </q-toolbar>
     </q-header>
 
@@ -29,11 +39,13 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useSettingsStore } from 'src/stores/settingsStore'
 import EssentialLink from 'components/EssentialLink.vue'
 
 const version = '1.0'
 const leftDrawerOpen = ref(false)
+const router = useRouter()
 const settingsStore = useSettingsStore()
 
 // Statičke stranice
@@ -52,12 +64,13 @@ const staticRoutes = [
   },
 ]
 
-// Dinamičke stranice
+// Dinamičke stranice ovisno o ulozi
 const dynamicRoutes = computed(() => {
   const role = settingsStore.uloga
   if (!role) {
     return [] // Ako nije odabrana uloga, ne prikazujemo dinamičke stranice
   }
+
   const routes = [
     {
       title: 'Izvođači',
@@ -78,9 +91,11 @@ const dynamicRoutes = computed(() => {
       route: '/nastupi',
     },
   ]
+
   if (role === 'Izvođač') {
-    return routes // Ako je uloga Izvođač, prikazuje osnovne stranice
+    return routes
   }
+
   // Ako je Organizator ili Administrator
   return [
     ...routes,
@@ -93,7 +108,18 @@ const dynamicRoutes = computed(() => {
   ]
 })
 
+// Provjera je li korisnik prijavljen (ima li spremljenu ulogu)
+const isLoggedIn = computed(() => !!settingsStore.uloga)
+
+// Funkcija za otvaranje/zatvaranje lijevog drawer-a
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value
+}
+
+// Funkcija za logout
+function logout() {
+  settingsStore.setUloga(null)
+  localStorage.removeItem('token')
+  router.push('/login')
 }
 </script>
