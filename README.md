@@ -38,3 +38,13 @@ quasar build
 
 ### Customize the configuration
 See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+
+### ADDED NEW PLUGINS
+## Terminal inside ...api/
+npm install jsonwebtoken
+npm install bcrypt
+npm install express mysql2
+npm install cors
+
+### INSIDE EVENTUPPI 
+npm install
