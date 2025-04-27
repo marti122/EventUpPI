@@ -3,10 +3,11 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" aria-label="Menu" @click="toggleLeftDrawer" />
-        <q-toolbar-title>Event Up</q-toolbar-title>
+        <q-toolbar-title @click="goToAboutPage" class="cursor-pointer"> Event Up </q-toolbar-title>
+
         <div>v{{ version }}</div>
 
-        <!-- 🔵 Logout gumb, prikazuje se samo ako je korisnik prijavljen -->
+        <!-- Logout gumb, prikazuje se samo ako je korisnik prijavljen -->
         <q-btn
           v-if="isLoggedIn"
           flat
@@ -121,5 +122,9 @@ function logout() {
   settingsStore.setUloga(null)
   localStorage.removeItem('token')
   router.push('/login')
+}
+
+function goToAboutPage() {
+  router.push('/onama')
 }
 </script>

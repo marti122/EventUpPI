@@ -44,7 +44,7 @@ function verifyToken(req, res, next) {
   })
 }
 
-// 🔵 API LOGIN - bez zaštite (otvoreno)
+// API LOGIN - sada šalje i username uz token i role
 app.post('/api/login', async (req, res, next) => {
   try {
     const { username, password, role } = req.body
@@ -66,16 +66,16 @@ app.post('/api/login', async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Neispravna uloga.' })
     }
 
-    const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role },
-      jwtSecret,
-      { expiresIn: '1h' }
-    )
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, jwtSecret, {
+      expiresIn: '1h',
+    })
 
+    // ➡️ Sad vraćamo i username uz token
     res.json({
       success: true,
       role: user.role,
       token,
+      username: user.username,
     })
   } catch (err) {
     console.error('Greška u loginu:', err.message)
@@ -83,8 +83,7 @@ app.post('/api/login', async (req, res, next) => {
   }
 })
 
-
-// 🔒 ZAŠTIĆENE RUTE (s verifyToken)
+// ZAŠTIĆENE RUTE (s verifyToken)
 
 app.get('/api/organizator', verifyToken, async (req, res, next) => {
   try {
@@ -114,7 +113,8 @@ app.put('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, ne
 
 app.post('/api/organizator', verifyToken, async (req, res, next) => {
   try {
-    const { sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora } = req.body
+    const { sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora } =
+      req.body
 
     await query(
       'INSERT INTO organizator (sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora) VALUES (?, ?, ?, ?)',
@@ -240,6 +240,46 @@ app.post('/api/nastupi', verifyToken, async (req, res, next) => {
     res.json({ message: 'Nastup dodan' })
   } catch (err) {
     console.error('Greška pri spremanju nastupa:', err.message)
+    next(err)
+  }
+})
+
+// Update korisničkih podataka
+app.put('/api/user/update', verifyToken, async (req, res, next) => {
+  try {
+    const { username, email, password } = req.body
+    const userId = req.user.id
+
+    let sql = 'UPDATE users SET '
+    const fields = []
+    const params = []
+
+    if (username) {
+      fields.push('username = ?')
+      params.push(username)
+    }
+    if (email) {
+      fields.push('email = ?')
+      params.push(email)
+    }
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10)
+      fields.push('password = ?')
+      params.push(hashedPassword)
+    }
+
+    if (fields.length === 0) {
+      return res.status(400).json({ error: 'Nema podataka za ažurirati.' })
+    }
+
+    sql += fields.join(', ') + ' WHERE id = ?'
+    params.push(userId)
+
+    await query(sql, params)
+
+    res.json({ message: 'Korisnički podaci uspješno ažurirani.' })
+  } catch (err) {
+    console.error('Greška u ažuriranju korisnika:', err.message)
     next(err)
   }
 })

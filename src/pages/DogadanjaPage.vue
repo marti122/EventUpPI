@@ -7,7 +7,8 @@
       bordered
       :rows="nastupi"
       :columns="columns"
-      row-key="datum_nastupa"
+      row-key="sifra_nastupa"
+      no-data-label="Nema dostupnih nastupa"
       @row-click="otvoriIzvodaca"
     />
 
@@ -28,7 +29,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 
 const nastupi = ref([])
@@ -47,13 +48,20 @@ const columns = [
   },
 ]
 
-// Dohvati nastupe iz backend-a
 async function dohvatiNastupe() {
   try {
-    const response = await axios.get('http://localhost:3000/api/nastupi')
-    nastupi.value = response.data
+    const token = localStorage.getItem('token') // ➡️ Uzmi token iz localStorage
+
+    const response = await axios.get('http://localhost:3000/api/nastupi', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    nastupi.value = response.data || []
   } catch (error) {
     console.error('Greška pri dohvaćanju nastupa:', error)
+    nastupi.value = []
   }
 }
 
@@ -65,7 +73,6 @@ async function otvoriIzvodaca(event, row) {
   }
 
   try {
-    console.log(`Dohvaćam izvođača: ${row.sifra_izvodaca}`)
     const response = await axios.get(`http://localhost:3000/api/izvodac/${row.sifra_izvodaca}`)
     izvodac.value = response.data
     prikaziDetalje.value = true
@@ -74,14 +81,6 @@ async function otvoriIzvodaca(event, row) {
   }
 }
 
-// Slušaj događaj za dodavanje novog nastupa
-onMounted(() => {
-  dohvatiNastupe()
-  window.addEventListener('nastupDodan', dohvatiNastupe)
-})
-
-// Ukloni event listener kada se komponenta uništi
-onUnmounted(() => {
-  window.removeEventListener('nastupDodan', dohvatiNastupe)
-})
+// Pokreni dohvaćanje kad stranica učita
+onMounted(dohvatiNastupe)
 </script>

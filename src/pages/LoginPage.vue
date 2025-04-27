@@ -2,28 +2,15 @@
   <q-layout view="lHh Lpr lFf">
     <q-page-container>
       <q-page class="q-pa-md flex flex-center">
-        <q-card class="q-pa-md shadow-2" style="width: 300px;">
+        <q-card class="q-pa-md shadow-2" style="width: 300px">
           <q-card-section>
             <div class="text-h6">Prijava</div>
             <div class="text-subtitle2">Unesite podatke za prijavu</div>
           </q-card-section>
 
           <q-card-section class="q-gutter-md">
-            <q-input
-              v-model="username"
-              label="Korisničko ime"
-              filled
-              dense
-              clearable
-            />
-            <q-input
-              v-model="password"
-              label="Lozinka"
-              type="password"
-              filled
-              dense
-              clearable
-            />
+            <q-input v-model="username" label="Korisničko ime" filled dense clearable autofocus />
+            <q-input v-model="password" label="Lozinka" type="password" filled dense clearable />
             <q-select
               v-model="selectedRole"
               :options="roleOptions"
@@ -33,13 +20,13 @@
               filled
               dense
             />
-            <q-banner v-if="error" class="bg-red text-white q-mt-md">
+            <q-banner v-if="error" class="bg-negative text-white q-mt-md">
               {{ error }}
             </q-banner>
           </q-card-section>
 
           <q-card-actions align="right">
-            <q-btn label="Prijavi se" color="primary" @click="login" />
+            <q-btn label="Prijavi se" color="primary" @click="login" :disable="!canLogin" />
           </q-card-actions>
         </q-card>
       </q-page>
@@ -48,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import { useSettingsStore } from 'src/stores/settingsStore'
@@ -67,21 +54,31 @@ const roleOptions = [
   { value: 'Administrator', label: 'Administrator' },
 ]
 
+// Dodatna sigurnost - onemogući gumb ako polja nisu ispunjena
+const canLogin = computed(() => {
+  return username.value && password.value && selectedRole.value
+})
+
 async function login() {
   error.value = null
   try {
-    const res = await axios.post('http://localhost:3000/api/login', {
+    const response = await axios.post('http://localhost:3000/api/login', {
       username: username.value,
       password: password.value,
       role: selectedRole.value,
     })
 
-    if (res.data.success) {
-  settingsStore.setUloga(res.data.role)
-  localStorage.setItem('token', res.data.token)
-  router.push('/')
-}
+    if (response.data.success) {
+      // Spremi u store i localStorage
+      settingsStore.setUloga(response.data.role)
+      settingsStore.setUsername(response.data.username)
+      localStorage.setItem('token', response.data.token)
 
+      // Preusmjeri korisnika
+      router.push('/')
+    } else {
+      error.value = response.data.message || 'Neuspješna prijava.'
+    }
   } catch (err) {
     error.value = err.response?.data?.message || 'Greška pri prijavi.'
   }
