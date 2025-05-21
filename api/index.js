@@ -9,7 +9,7 @@ const app = express()
 const port = 3000
 const jwtSecret = 'tajnaLozinka123'
 
-// Funkcija za izvršavanje SQL upita
+// 🔧 Funkcija za izvršavanje SQL upita
 async function query(sql, params = []) {
   try {
     const connection = await mysql.createConnection(config.db)
@@ -26,7 +26,7 @@ async function query(sql, params = []) {
 app.use(express.json())
 app.use(cors({ origin: '*' }))
 
-// Middleware za zaštitu ruta
+// Middleware za provjeru JWT tokena
 function verifyToken(req, res, next) {
   const authHeader = req.headers['authorization']
   const token = authHeader && authHeader.split(' ')[1]
@@ -44,7 +44,8 @@ function verifyToken(req, res, next) {
   })
 }
 
-// API LOGIN - sada šalje i username uz token i role
+// LOGIN API - provjerava korisničke podatke i vraća token
+// Koristi se na: LoginPage.vue
 app.post('/api/login', async (req, res, next) => {
   try {
     const { username, password, role } = req.body
@@ -70,7 +71,6 @@ app.post('/api/login', async (req, res, next) => {
       expiresIn: '1h',
     })
 
-    // ➡️ Sad vraćamo i username uz token
     res.json({
       success: true,
       role: user.role,
@@ -83,8 +83,8 @@ app.post('/api/login', async (req, res, next) => {
   }
 })
 
-// ZAŠTIĆENE RUTE (s verifyToken)
-
+// Dohvaća sve organizatore
+// Koristi se na: OrganizerListPage.vue
 app.get('/api/organizator', verifyToken, async (req, res, next) => {
   try {
     const result = await query('SELECT * FROM organizator')
@@ -94,6 +94,8 @@ app.get('/api/organizator', verifyToken, async (req, res, next) => {
   }
 })
 
+// Ažurira organizatora
+// Koristi se na: OrganizerEditPage.vue
 app.put('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, next) => {
   try {
     const { sifra_organizatora } = req.params
@@ -111,6 +113,8 @@ app.put('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, ne
   }
 })
 
+// Dodaje organizatora
+// Koristi se na: OrganizerCreatePage.vue
 app.post('/api/organizator', verifyToken, async (req, res, next) => {
   try {
     const { sifra_organizatora, naziv_organizatora, kontakt_organizatora, lokacija_organizatora } =
@@ -129,6 +133,8 @@ app.post('/api/organizator', verifyToken, async (req, res, next) => {
   }
 })
 
+// Briše organizatora
+// Koristi se na: OrganizerListPage.vue
 app.delete('/api/organizator/:sifra_organizatora', verifyToken, async (req, res, next) => {
   try {
     const { sifra_organizatora } = req.params
@@ -148,15 +154,20 @@ app.delete('/api/organizator/:sifra_organizatora', verifyToken, async (req, res,
   }
 })
 
+// Dohvaća sve izvođače
+// Koristi se na: DogadanjaNovoPage.vue (q-select)
 app.get('/api/izvodac', verifyToken, async (req, res, next) => {
   try {
-    const result = await query('SELECT * FROM izvodac')
+    const result = await query('SELECT sifra_izvodaca, ime_izvodaca, prezime_izvodaca FROM izvodac')
     res.json(result)
   } catch (err) {
+    console.error('Greška pri dohvaćanju izvođača:', err.message)
     next(err)
   }
 })
 
+// Ažurira izvođača
+// Koristi se na: PerformerEditPage.vue
 app.put('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) => {
   try {
     const { sifra_izvodaca } = req.params
@@ -174,6 +185,8 @@ app.put('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) => {
   }
 })
 
+// Dodaje izvođača
+// Koristi se na: PerformerCreatePage.vue
 app.post('/api/izvodac', verifyToken, async (req, res, next) => {
   try {
     const {
@@ -197,6 +210,8 @@ app.post('/api/izvodac', verifyToken, async (req, res, next) => {
   }
 })
 
+// Briše izvođača
+// Koristi se na: PerformerListPage.vue
 app.delete('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) => {
   try {
     const { sifra_izvodaca } = req.params
@@ -214,6 +229,8 @@ app.delete('/api/izvodac/:sifra_izvodaca', verifyToken, async (req, res, next) =
   }
 })
 
+// Dohvaća sve nastupe
+// Koristi se na: DogadanjaListPage.vue
 app.get('/api/nastupi', verifyToken, async (req, res, next) => {
   try {
     const result = await query('SELECT datum_nastupa, mjesto_nastupa, sifra_izvodaca FROM nastup')
@@ -223,6 +240,8 @@ app.get('/api/nastupi', verifyToken, async (req, res, next) => {
   }
 })
 
+// Dodaje novi nastup
+// Koristi se na: DogadanjaNovoPage.vue
 app.post('/api/nastupi', verifyToken, async (req, res, next) => {
   try {
     const { datum_nastupa, mjesto_nastupa, sifra_izvodaca } = req.body
@@ -244,7 +263,8 @@ app.post('/api/nastupi', verifyToken, async (req, res, next) => {
   }
 })
 
-// Update korisničkih podataka
+// Ažurira korisničke podatke
+// Koristi se na: SettingsPage.vue
 app.put('/api/user/update', verifyToken, async (req, res, next) => {
   try {
     const { username, email, password } = req.body
@@ -284,7 +304,7 @@ app.put('/api/user/update', verifyToken, async (req, res, next) => {
   }
 })
 
-// Pokreni server
+// Pokretanje servera
 app.listen(port, () => {
   console.log(`Server pokrenut na http://localhost:${port}`)
 })

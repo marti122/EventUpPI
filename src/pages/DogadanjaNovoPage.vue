@@ -18,7 +18,14 @@ const izvodaci = ref([])
 // Dohvati izvođače
 async function dohvatiIzvodace() {
   try {
-    const response = await axios.get('http://localhost:3000/api/izvodac')
+    const token = localStorage.getItem('token')
+
+    const response = await axios.get('http://localhost:3000/api/izvodac', {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
     izvodaci.value = response.data.map((izvodac) => ({
       sifra_izvodaca: izvodac.sifra_izvodaca,
       punoIme: `${izvodac.ime_izvodaca} ${izvodac.prezime_izvodaca}`,
